@@ -192,6 +192,7 @@ export interface ApiOptions {
      * @default []
      */
     middleware?: Middleware[];
+
     /**
      * @description
      * Set the trust proxy configuration for the server. See the [express proxy docs](https://expressjs.com/en/guide/behind-proxies.html).
