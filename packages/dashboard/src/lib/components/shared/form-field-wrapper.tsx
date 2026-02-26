@@ -1,3 +1,4 @@
+import { getCustomFormLabel } from '@/vdb/framework/extension-api/logic/index.js';
 import { OverriddenFormComponent } from '@/vdb/framework/form-engine/overridden-form-component.js';
 import { LocationWrapper } from '@/vdb/framework/layout-engine/location-wrapper.js';
 import { FieldPath, FieldValues } from 'react-hook-form';
@@ -82,6 +83,7 @@ export function FormFieldWrapper<
     description,
     renderFormControl = true,
 }: FormFieldWrapperProps<TFieldValues, TName>) {
+    const customLabel = getCustomFormLabel(name) ?? label;
     return (
         <LocationWrapper identifier={name}>
             <FormField
@@ -89,7 +91,7 @@ export function FormFieldWrapper<
                 name={name}
                 render={renderArgs => (
                     <FormItem>
-                        {label && <FormLabel>{label}</FormLabel>}
+                        {customLabel && <FormLabel>{customLabel}</FormLabel>}
                         {renderFormControl ? (
                             <FormControl>
                                 <OverriddenFormComponent field={renderArgs.field} fieldName={name}>

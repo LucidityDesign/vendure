@@ -29,4 +29,5 @@ export interface GlobalRegistryContents {
     detailQueryDocumentRegistry: Map<string, DocumentNode[]>;
     loginExtensions: DashboardLoginExtensions;
     historyEntries: Map<string, DashboardHistoryEntryComponent['component']>;
+    formLabels: Map<string, string | React.ReactNode>;
 }
