@@ -89,4 +89,9 @@ export interface DashboardExtension {
      * in the Order or Customer history lists.
      */
     historyEntries?: DashboardHistoryEntryComponent[];
+
+    /**
+     * TODO test
+     */
+    customFormLabels?: Record<string, string | React.ReactNode>;
 }
