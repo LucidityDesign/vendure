@@ -43,14 +43,23 @@ function registerCustomFieldsForEntity(
             const instance = new ctor();
             const registerColumn = () => {
                 if (customField.type === 'relation') {
+                    const { cascade, onDelete, onUpdate, eager } = customField;
                     if (customField.list) {
                         ManyToMany(type => customField.entity, customField.inverseSide, {
-                            eager: customField.eager,
+                            nullable,
+                            cascade,
+                            onDelete,
+                            onUpdate,
+                            eager,
                         })(instance, name);
                         JoinTable()(instance, name);
                     } else {
                         ManyToOne(type => customField.entity, customField.inverseSide, {
-                            eager: customField.eager,
+                            nullable,
+                            cascade,
+                            onDelete,
+                            onUpdate,
+                            eager,
                         })(instance, name);
                         JoinColumn()(instance, name);
                     }
