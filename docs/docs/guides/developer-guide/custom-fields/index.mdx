@@ -988,6 +988,9 @@ In addition to the common properties, the `relation` custom fields have some typ
 - [`eager`](#eager)
 - [`graphQLType`](#graphqltype)
 - [`inverseSide`](#inverseside)
+- [`cascade`](#cascade)
+- [`onDelete`](#ondelete)
+- [`onUpdate`](#onupdate)
 
 #### entity
 
@@ -1100,6 +1103,82 @@ const { productReviews } = await this.connection.getRepository(ProductReview).fi
     where: { id: 1 },
     relations: ['product'],
 });
+```
+
+#### cascade
+
+<CustomFieldProperty required={false} type="boolean | ('insert' | 'update' | 'remove' | 'soft-remove' | 'recover')[]" />
+
+Whether to [cascade](https://typeorm.io/docs/relations/relations#cascade-options) operations on the relation. Defaults to `false`.
+
+```ts title="src/vendure-config.ts"
+import { Product } from '\@vendure/core';
+import { ProductReview } from './entities/product-review.entity';
+
+const config = {
+    // ...
+    customFields: {
+        Product: [
+            {
+                name: 'reviews',
+                list: true,
+                type: 'relation',
+                entity: ProductReview,
+                cascade: ['insert', 'update'], // [!code highlight]
+            },
+        ]
+    }
+};
+```
+
+#### onDelete
+<CustomFieldProperty required={false} type="'RESTRICT' | 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'SET DEFAULT'" />
+
+The [onDelete](https://typeorm.io/docs/relations/relations/) behavior for the relation. Defaults to `RESTRICT`.
+
+```ts title="src/vendure-config.ts"
+import { Product } from '\@vendure/core';
+import { ProductReview } from './entities/product-review.entity';
+
+const config = {
+    // ...
+    customFields: {
+        Product: [
+            {
+                name: 'reviews',
+                list: true,
+                type: 'relation',
+                entity: ProductReview,
+                onDelete: 'SET NULL', // [!code highlight]
+            },
+        ]
+    }
+};
+```
+
+#### onUpdate
+<CustomFieldProperty required={false} type="'RESTRICT' | 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'SET DEFAULT'" />
+
+The [onUpdate](https://typeorm.io/docs/relations/relations/) behavior for the relation. Defaults to `RESTRICT`.
+
+```ts title="src/vendure-config.ts"
+import { Product } from '\@vendure/core';
+import { ProductReview } from './entities/product-review.entity';
+
+const config = {
+    // ...
+    customFields: {
+        Product: [
+            {
+                name: 'reviews',
+                list: true,
+                type: 'relation',
+                entity: ProductReview,
+                onUpdate: 'CASCADE', // [!code highlight]
+            },
+        ]
+    }
+};
 ```
 
 ## Custom Field UI
