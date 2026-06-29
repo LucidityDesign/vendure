@@ -1,6 +1,6 @@
 import { DeepPartial } from '@vendure/common/lib/shared-types';
 import { getMetadataArgsStorage } from 'typeorm';
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Logger } from '../config';
 import { CustomFields } from '../config/custom-field/custom-field-types';
@@ -15,9 +15,9 @@ const LIST_RELATION_FIELD = '__testRelationOptionsList__';
 const NON_RELATION_FIELD = '__testRelationOptionsNonRelation__';
 
 class TestEntity extends VendureEntity {
-        constructor(input?: DeepPartial<TestEntity>) {
-            super(input);
-        }
+    constructor(input?: DeepPartial<TestEntity>) {
+        super(input);
+    }
     customFields: any;
 }
 
@@ -220,11 +220,77 @@ describe('registerCustomEntityFields() relation options', () => {
 
         expect(mockLoggerWarn).toHaveBeenCalledWith(
             [
+                `WARNING: You have set "cascade: true (which includes 'remove' and 'soft-remove')" on a custom field relation to the "Asset" entity.`,
+                `With this behavior, deleting a "Asset" row can delete owning rows that reference it.`,
+                `Please verify this is intended, especially when targeting core Vendure entities.`,
+            ].join('\n'),
+        );
+    });
+
+    it('warns if a mixed cascade array including "remove" affects core Vendure entities', () => {
+        registerCustomEntityFields(
+            createConfig({
+                Product: [
+                    { name: NON_RELATION_FIELD, type: 'string' },
+                    {
+                        name: SINGLE_RELATION_FIELD,
+                        type: 'relation',
+                        list: false,
+                        entity: Asset,
+                        cascade: ['insert', 'remove'],
+                        eager: false,
+                    },
+                ],
+            }),
+        );
+
+        expect(mockLoggerWarn).toHaveBeenCalledWith(
+            [
                 `WARNING: You have set "cascade: ['remove' | 'soft-remove']" on a custom field relation to the "Asset" entity.`,
                 `With this behavior, deleting a "Asset" row can delete owning rows that reference it.`,
                 `Please verify this is intended, especially when targeting core Vendure entities.`,
             ].join('\n'),
         );
+    });
+
+    it('should not warn for cascade: ["insert"] on a core entity', () => {
+        registerCustomEntityFields(
+            createConfig({
+                Product: [
+                    { name: NON_RELATION_FIELD, type: 'string' },
+                    {
+                        name: SINGLE_RELATION_FIELD,
+                        type: 'relation',
+                        list: false,
+                        entity: Asset,
+                        cascade: ['insert', 'update'],
+                        eager: false,
+                    },
+                ],
+            }),
+        );
+
+        expect(mockLoggerWarn).toBeCalledTimes(0);
+    });
+
+    it('should not warn for onDelete: "SET NULL" on a core entity', () => {
+        registerCustomEntityFields(
+            createConfig({
+                Product: [
+                    { name: NON_RELATION_FIELD, type: 'string' },
+                    {
+                        name: SINGLE_RELATION_FIELD,
+                        type: 'relation',
+                        list: false,
+                        entity: Asset,
+                        onDelete: 'SET NULL',
+                        eager: false,
+                    },
+                ],
+            }),
+        );
+
+        expect(mockLoggerWarn).toBeCalledTimes(0);
     });
 
     it('should not warn if cascading is not affecting core entities', () => {

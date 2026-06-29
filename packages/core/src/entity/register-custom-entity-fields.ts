@@ -59,14 +59,18 @@ function registerCustomFieldsForEntity(
                     }
                     if (
                         (cascade === true ||
-                            (Array.isArray(cascade) && (cascade.includes('remove') || cascade.includes('soft-remove')))) &&
+                            (Array.isArray(cascade) &&
+                                (cascade.includes('remove') || cascade.includes('soft-remove')))) &&
                         relatedEntityName in coreEntitiesMap &&
                         list !== true
-
                     ) {
+                        const cascadeSetting =
+                            cascade === true
+                                ? `cascade: true (which includes 'remove' and 'soft-remove')`
+                                : `cascade: ['remove' | 'soft-remove']`;
                         Logger.warn(
                             [
-                                `WARNING: You have set "cascade: ['remove' | 'soft-remove']" on a custom field relation to the "${relatedEntityName}" entity.`,
+                                `WARNING: You have set "${cascadeSetting}" on a custom field relation to the "${relatedEntityName}" entity.`,
                                 `With this behavior, deleting a "${relatedEntityName}" row can delete owning rows that reference it.`,
                                 `Please verify this is intended, especially when targeting core Vendure entities.`,
                             ].join('\n'),
