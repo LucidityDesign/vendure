@@ -115,9 +115,10 @@ export type TypedCustomSingleFieldConfig<
 export type TypedCustomListFieldConfig<
     T extends CustomFieldType,
     C extends CustomField,
-> = BaseTypedCustomFieldConfig<T, C> & {
+> = Omit<BaseTypedCustomFieldConfig<T, C>, 'nullable'> & {
     list?: true;
     defaultValue?: Array<DefaultValueType<T>>;
+    nullable?: never;
     validate?: (
         value: Array<DefaultValueType<T>>,
     ) => string | LocalizedString[] | void | Promise<string | LocalizedString[] | void>;

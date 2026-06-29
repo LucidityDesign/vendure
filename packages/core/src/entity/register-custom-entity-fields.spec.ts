@@ -33,7 +33,7 @@ describe('registerCustomEntityFields() relation options', () => {
         mockLoggerWarn.mockRestore();
     });
 
-    it('applies cascade/onDelete/onUpdate/eager on many-to-one relation custom fields', () => {
+    it('applies cascade/onDelete/onUpdate/eager/nullable on many-to-one relation custom fields', () => {
         registerCustomEntityFields(
             createConfig({
                 Product: [
@@ -46,6 +46,7 @@ describe('registerCustomEntityFields() relation options', () => {
                         onDelete: 'SET NULL',
                         onUpdate: 'CASCADE',
                         eager: true,
+                        nullable: true,
                     },
                 ],
             }),
@@ -61,6 +62,7 @@ describe('registerCustomEntityFields() relation options', () => {
             onDelete: 'SET NULL',
             onUpdate: 'CASCADE',
             eager: true,
+            nullable: true,
         });
     });
 
@@ -267,6 +269,30 @@ describe('registerCustomEntityFields() relation options', () => {
         );
 
         expect(mockLoggerWarn).toBeCalledTimes(0);
+    });
+
+    it('should ignore nullable on list relation fields', () => {
+        registerCustomEntityFields(
+            createConfig({
+                Product: [
+                    // @ts-expect-error -- nullable is not a valid option for many-to-many relations
+                    {
+                        name: LIST_RELATION_FIELD,
+                        type: 'relation',
+                        list: true,
+                        entity: Asset,
+                        nullable: true,
+                    },
+                ],
+            }),
+        );
+
+        const relation = getMetadataArgsStorage()
+            .filterRelations(getProductCustomFieldsClass())
+            .find(r => r.propertyName === LIST_RELATION_FIELD);
+
+        expect(relation?.relationType).toBe('many-to-many');
+        expect(relation?.options.nullable).toBeUndefined();
     });
 });
 

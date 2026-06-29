@@ -86,6 +86,7 @@ function registerCustomFieldsForEntity(
                             onDelete,
                             onUpdate,
                             eager,
+                            nullable,
                         })(instance, name);
                         JoinColumn()(instance, name);
                     }
