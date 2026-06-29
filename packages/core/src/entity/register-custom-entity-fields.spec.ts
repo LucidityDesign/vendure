@@ -1,20 +1,37 @@
 import { getMetadataArgsStorage } from 'typeorm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CustomFields } from '../config/custom-field/custom-field-types';
 import { VendureConfig } from '../config/vendure-config';
 
 import { Asset } from './asset/asset.entity';
 import { registerCustomEntityFields } from './register-custom-entity-fields';
+import { VendureEntity } from './base/base.entity';
+import { DeepPartial } from '@vendure/common/lib/shared-types';
+import { Logger } from '../config';
 
 const SINGLE_RELATION_FIELD = '__testRelationOptionsSingle__';
 const LIST_RELATION_FIELD = '__testRelationOptionsList__';
 const NON_RELATION_FIELD = '__testRelationOptionsNonRelation__';
 
+class TestEntity extends VendureEntity {
+        constructor(input?: DeepPartial<TestEntity>) {
+            super(input);
+        }
+    customFields: any;
+}
+
 describe('registerCustomEntityFields() relation options', () => {
-    beforeEach(() => {
+    const mockLoggerWarn = vi.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+
+    afterEach(() => {
         removeTestMetadata();
     });
+
+    afterAll(() => {
+        mockLoggerWarn.mockRestore();
+    });
+
     it('applies cascade/onDelete/onUpdate/eager on many-to-one relation custom fields', () => {
         registerCustomEntityFields(
             createConfig({
@@ -23,7 +40,7 @@ describe('registerCustomEntityFields() relation options', () => {
                     {
                         name: SINGLE_RELATION_FIELD,
                         type: 'relation',
-                        entity: Asset,
+                        entity: TestEntity,
                         cascade: true,
                         onDelete: 'SET NULL',
                         onUpdate: 'CASCADE',
@@ -38,7 +55,7 @@ describe('registerCustomEntityFields() relation options', () => {
             .find(r => r.propertyName === SINGLE_RELATION_FIELD);
 
         expect(relation?.relationType).toBe('many-to-one');
-        expect(relation?.options).toMatchObject({
+        expect(relation?.options).toEqual({
             cascade: true,
             onDelete: 'SET NULL',
             onUpdate: 'CASCADE',
@@ -55,7 +72,7 @@ describe('registerCustomEntityFields() relation options', () => {
                         name: LIST_RELATION_FIELD,
                         type: 'relation',
                         list: true,
-                        entity: Asset,
+                        entity: TestEntity,
                         cascade: ['insert', 'update'],
                         onDelete: 'CASCADE',
                         onUpdate: 'RESTRICT',
@@ -70,12 +87,143 @@ describe('registerCustomEntityFields() relation options', () => {
             .find(r => r.propertyName === LIST_RELATION_FIELD);
 
         expect(relation?.relationType).toBe('many-to-many');
-        expect(relation?.options).toMatchObject({
+        expect(relation?.options).toEqual({
             cascade: ['insert', 'update'],
             onDelete: 'CASCADE',
             onUpdate: 'RESTRICT',
             eager: false,
         });
+    });
+
+    it('applies default options on relation custom fields', () => {
+        registerCustomEntityFields(
+            createConfig({
+                Product: [
+                    { name: NON_RELATION_FIELD, type: 'string' },
+                    {
+                        name: LIST_RELATION_FIELD,
+                        type: 'relation',
+                        entity: TestEntity,
+                    },
+                ],
+            }),
+        );
+
+        const relation = getMetadataArgsStorage()
+            .filterRelations(getProductCustomFieldsClass())
+            .find(r => r.propertyName === LIST_RELATION_FIELD);
+
+        expect(relation?.relationType).toBe('many-to-one');
+        expect(relation?.options).toEqual({
+            cascade: undefined,
+            onDelete: undefined,
+            onUpdate: undefined,
+            eager: undefined,
+        });
+    });
+
+    it('warns if onDelete: \'CASCADE\' is affecting core Vendure entities', () => {
+        registerCustomEntityFields(
+            createConfig({
+                Product: [
+                    { name: NON_RELATION_FIELD, type: 'string' },
+                    {
+                        name: LIST_RELATION_FIELD,
+                        type: 'relation',
+                        list: false,
+                        entity: Asset,
+                        onDelete: 'CASCADE',
+                        eager: false,
+                    },
+                ],
+            }),
+        );
+
+        expect(mockLoggerWarn).toHaveBeenCalledWith(
+            [
+                `WARNING: You have set "onDelete: 'CASCADE'" on a custom field relation to the "Asset" entity.`,
+                `With this FK behavior, deleting a "Asset" row can delete owning rows that reference it.`,
+                `Please verify this is intended, especially when targeting core Vendure entities.`,
+            ].join('\n'),
+        );
+    });
+
+    it('warns if cascade: ["remove"] is affecting core Vendure entities', () => {
+        registerCustomEntityFields(
+            createConfig({
+                Product: [
+                    { name: NON_RELATION_FIELD, type: 'string' },
+                    {
+                        name: LIST_RELATION_FIELD,
+                        type: 'relation',
+                        list: false,
+                        entity: Asset,
+                        cascade: ['remove'],
+                        eager: false,
+                    },
+                ],
+            }),
+        );
+
+        expect(mockLoggerWarn).toHaveBeenCalledWith(
+            [
+                `WARNING: You have set "cascade: ['remove' | 'soft-remove']" on a custom field relation to the "Asset" entity.`,
+                `With this behavior, deleting a "Asset" row can delete owning rows that reference it.`,
+                `Please verify this is intended, especially when targeting core Vendure entities.`,
+            ].join('\n'),
+        );
+    });
+
+    it('warns if cascade: ["soft-remove"] is affecting core Vendure entities', () => {
+        registerCustomEntityFields(
+            createConfig({
+                Product: [
+                    { name: NON_RELATION_FIELD, type: 'string' },
+                    {
+                        name: LIST_RELATION_FIELD,
+                        type: 'relation',
+                        list: false,
+                        entity: Asset,
+                        cascade: ['soft-remove'],
+                        eager: false,
+                    },
+                ],
+            }),
+        );
+
+        expect(mockLoggerWarn).toHaveBeenCalledWith(
+            [
+                `WARNING: You have set "cascade: ['remove' | 'soft-remove']" on a custom field relation to the "Asset" entity.`,
+                `With this behavior, deleting a "Asset" row can delete owning rows that reference it.`,
+                `Please verify this is intended, especially when targeting core Vendure entities.`,
+            ].join('\n'),
+        );
+    });
+
+    it('warns if cascade: true is affecting core Vendure entities', () => {
+        registerCustomEntityFields(
+            createConfig({
+                Product: [
+                    { name: NON_RELATION_FIELD, type: 'string' },
+                    {
+                        name: LIST_RELATION_FIELD,
+                        type: 'relation',
+                        list: false,
+                        entity: Asset,
+                        cascade: true,
+                        eager: false,
+                    },
+                ],
+            }),
+        );
+
+        expect(mockLoggerWarn).toHaveBeenCalledWith(
+            [
+                `WARNING: You have set "cascade: ['remove' | 'soft-remove']" on a custom field relation to the "Asset" entity.`,
+                `With this behavior, deleting a "Asset" row can delete owning rows that reference it.`,
+                `Please verify this is intended, especially when targeting core Vendure entities.`,
+            ].join('\n'),
+        );
     });
 });
 

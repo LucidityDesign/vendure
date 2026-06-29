@@ -57,6 +57,19 @@ function registerCustomFieldsForEntity(
                             ].join('\n'),
                         );
                     }
+                    if (
+                        cascade === true ||
+                        (Array.isArray(cascade) && (cascade.includes('remove') || cascade.includes('soft-remove'))) &&
+                        relatedEntityName in coreEntitiesMap
+                    ) {
+                        Logger.warn(
+                            [
+                                `WARNING: You have set "cascade: ['remove' | 'soft-remove']" on a custom field relation to the "${relatedEntityName}" entity.`,
+                                `With this behavior, deleting a "${relatedEntityName}" row can delete owning rows that reference it.`,
+                                `Please verify this is intended, especially when targeting core Vendure entities.`,
+                            ].join('\n'),
+                        );
+                    }
                     if (customField.list) {
                         ManyToMany(type => customField.entity, customField.inverseSide, {
                             cascade,
