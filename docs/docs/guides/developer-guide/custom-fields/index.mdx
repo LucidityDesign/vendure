@@ -1169,7 +1169,6 @@ const config = {
 <CustomFieldProperty required={false} type="'RESTRICT' | 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'SET DEFAULT'" />
 
 The [onUpdate](https://typeorm.io/docs/relations/relations/) behavior for the relation. If not set, the database default (`NO ACTION`) applies.
-`onUpdate` is not supported by SQLite and will be ignored if you are using SQLite as your database.
 
 Setting `onUpdate` on a `ManyToMany` (`list: true`) relation will affect the join table, but not the related entity.
 
