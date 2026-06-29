@@ -1,14 +1,14 @@
+import { DeepPartial } from '@vendure/common/lib/shared-types';
 import { getMetadataArgsStorage } from 'typeorm';
-import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { Logger } from '../config';
 import { CustomFields } from '../config/custom-field/custom-field-types';
 import { VendureConfig } from '../config/vendure-config';
 
 import { Asset } from './asset/asset.entity';
-import { registerCustomEntityFields } from './register-custom-entity-fields';
 import { VendureEntity } from './base/base.entity';
-import { DeepPartial } from '@vendure/common/lib/shared-types';
-import { Logger } from '../config';
+import { registerCustomEntityFields } from './register-custom-entity-fields';
 
 const SINGLE_RELATION_FIELD = '__testRelationOptionsSingle__';
 const LIST_RELATION_FIELD = '__testRelationOptionsList__';
@@ -22,13 +22,14 @@ class TestEntity extends VendureEntity {
 }
 
 describe('registerCustomEntityFields() relation options', () => {
-    const mockLoggerWarn = vi.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+    let mockLoggerWarn: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+        mockLoggerWarn = vi.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+    });
 
     afterEach(() => {
         removeTestMetadata();
-    });
-
-    afterAll(() => {
         mockLoggerWarn.mockRestore();
     });
 
@@ -224,6 +225,48 @@ describe('registerCustomEntityFields() relation options', () => {
                 `Please verify this is intended, especially when targeting core Vendure entities.`,
             ].join('\n'),
         );
+    });
+
+    it('should not warn if cascading is not affecting core entities', () => {
+        registerCustomEntityFields(
+            createConfig({
+                Product: [
+                    { name: NON_RELATION_FIELD, type: 'string' },
+                    {
+                        name: LIST_RELATION_FIELD,
+                        type: 'relation',
+                        list: false,
+                        entity: TestEntity,
+                        cascade: true,
+                        onDelete: 'CASCADE',
+                        eager: false,
+                    },
+                ],
+            }),
+        );
+
+        expect(mockLoggerWarn).toBeCalledTimes(0);
+    });
+
+    it('should not warn if cascading is affecting join tables', () => {
+        registerCustomEntityFields(
+            createConfig({
+                Product: [
+                    { name: NON_RELATION_FIELD, type: 'string' },
+                    {
+                        name: LIST_RELATION_FIELD,
+                        type: 'relation',
+                        list: true,
+                        entity: Asset,
+                        cascade: true,
+                        onDelete: 'CASCADE',
+                        eager: false,
+                    },
+                ],
+            }),
+        );
+
+        expect(mockLoggerWarn).toBeCalledTimes(0);
     });
 });
 

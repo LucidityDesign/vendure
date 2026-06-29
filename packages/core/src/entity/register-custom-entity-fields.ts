@@ -48,7 +48,7 @@ function registerCustomFieldsForEntity(
                     const { cascade, onDelete, onUpdate, eager } = customField;
                     const relatedEntityName = customField.entity.name;
 
-                    if (onDelete === 'CASCADE' && relatedEntityName in coreEntitiesMap) {
+                    if (onDelete === 'CASCADE' && relatedEntityName in coreEntitiesMap && list !== true) {
                         Logger.warn(
                             [
                                 `WARNING: You have set "onDelete: 'CASCADE'" on a custom field relation to the "${relatedEntityName}" entity.`,
@@ -58,9 +58,11 @@ function registerCustomFieldsForEntity(
                         );
                     }
                     if (
-                        cascade === true ||
-                        (Array.isArray(cascade) && (cascade.includes('remove') || cascade.includes('soft-remove'))) &&
-                        relatedEntityName in coreEntitiesMap
+                        (cascade === true ||
+                            (Array.isArray(cascade) && (cascade.includes('remove') || cascade.includes('soft-remove')))) &&
+                        relatedEntityName in coreEntitiesMap &&
+                        list !== true
+
                     ) {
                         Logger.warn(
                             [
