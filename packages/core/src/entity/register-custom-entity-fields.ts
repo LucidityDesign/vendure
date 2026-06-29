@@ -67,7 +67,6 @@ function registerCustomFieldsForEntity(
                         JoinTable()(instance, name);
                     } else {
                         ManyToOne(type => customField.entity, customField.inverseSide, {
-                            nullable,
                             cascade,
                             onDelete,
                             onUpdate,
