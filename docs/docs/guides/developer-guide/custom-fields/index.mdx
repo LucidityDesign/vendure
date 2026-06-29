@@ -1134,7 +1134,7 @@ const config = {
 #### onDelete
 <CustomFieldProperty required={false} type="'RESTRICT' | 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'SET DEFAULT'" />
 
-The [onDelete](https://typeorm.io/docs/relations/relations/) behavior for the relation. Defaults to `RESTRICT`.
+The [onDelete](https://typeorm.io/docs/relations/relations/) behavior for the relation. Defaults to `NO ACTION`.
 
 :::note
 
@@ -1142,6 +1142,8 @@ Setting `onDelete` to `CASCADE` means that if the referenced entity is deleted, 
 This can have unintended consequences, especially when referencing core Vendure entities.
 For example, if you have a relation to `ProductVariant` and set `onDelete: 'CASCADE'`, deleting that `ProductVariant` can cascade to rows that reference it.
 Use with caution.
+
+Setting `onDelete` on a `ManyToMany` (`list: true`) relation will affect the join table, but not the related entity.
 
 ```ts title="src/vendure-config.ts"
 import { Product } from '\@vendure/core';
@@ -1153,7 +1155,7 @@ const config = {
         Product: [
             {
                 name: 'reviews',
-                list: true,
+                list: false,
                 type: 'relation',
                 entity: ProductReview,
                 onDelete: 'SET NULL', // [!code highlight]
@@ -1166,7 +1168,10 @@ const config = {
 #### onUpdate
 <CustomFieldProperty required={false} type="'RESTRICT' | 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'SET DEFAULT'" />
 
-The [onUpdate](https://typeorm.io/docs/relations/relations/) behavior for the relation. Defaults to `RESTRICT`.
+The [onUpdate](https://typeorm.io/docs/relations/relations/) behavior for the relation. If not set, the database default (`NO ACTION`) applies.
+`onUpdate` is not supported by SQLite and will be ignored if you are using SQLite as your database.
+
+Setting `onUpdate` on a `ManyToMany` (`list: true`) relation will affect the join table, but not the related entity.
 
 ```ts title="src/vendure-config.ts"
 import { Product } from '\@vendure/core';
@@ -1178,7 +1183,7 @@ const config = {
         Product: [
             {
                 name: 'reviews',
-                list: true,
+                list: false,
                 type: 'relation',
                 entity: ProductReview,
                 onUpdate: 'CASCADE', // [!code highlight]
