@@ -254,8 +254,9 @@ describe('AssetServerPlugin', () => {
 
             expect(deleteAsset.result).toBe(DeletionResult.DELETED);
 
-            expect(fs.existsSync(sourceFilePath)).toBe(false);
-            expect(fs.existsSync(previewFilePath)).toBe(false);
+            await expect
+                .poll(() => [sourceFilePath, previewFilePath].some(filePath => fs.existsSync(filePath)))
+                .toBe(false);
         });
     });
 
@@ -263,15 +264,18 @@ describe('AssetServerPlugin', () => {
         let testImages: Array<FragmentOf<typeof assetFragment>> = [];
 
         async function testMimeTypeOfAssetWithExt(ext: string, expectedMimeType: string) {
-            const testImage = testImages.find(i => i.source.endsWith(ext))!;
-            const result = await fetch(testImage.source);
+            // Use optional chaining so a rejected upload (no `source`) does not throw here and
+            // cascade into false failures for the other formats; assert it was accepted instead.
+            const testImage = testImages.find(i => i.source?.endsWith(ext));
+            expect(testImage?.source, `Asset with extension ".${ext}" was not created`).toBeTruthy();
+            const result = await fetch(testImage!.source);
             const contentType = result.headers.get('Content-Type');
 
             expect(contentType).toBe(expectedMimeType);
         }
 
         beforeAll(async () => {
-            const formats = ['gif', 'jpg', 'png', 'svg', 'tiff', 'webp'];
+            const formats = ['gif', 'jpg', 'pdf', 'png', 'svg', 'tiff', 'webp'];
 
             const filesToUpload = formats.map(ext => path.join(__dirname, `fixtures/assets/test.${ext}`));
             const { createAssets } = await adminClient.fileUploadMutation({
@@ -291,6 +295,10 @@ describe('AssetServerPlugin', () => {
 
         it('jpg', async () => {
             await testMimeTypeOfAssetWithExt('jpg', 'image/jpeg');
+        });
+
+        it('pdf', async () => {
+            await testMimeTypeOfAssetWithExt('pdf', 'application/pdf');
         });
 
         it('png', async () => {

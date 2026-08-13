@@ -65,7 +65,10 @@ test.describe('Orders', () => {
         await filteredRequest;
         // The Regular order survives the matching filter, and an active filter badge appears.
         await lp.expectRowCountGreaterThan(0);
-        const filterBadge = page.getByRole('button').filter({ hasText: 'type' }).filter({ hasText: 'Regular' });
+        const filterBadge = page
+            .getByRole('button')
+            .filter({ hasText: 'type' })
+            .filter({ hasText: 'Regular' });
         await expect(filterBadge).toBeVisible();
         await expect(page.getByText(/An error occurred:/i)).toHaveCount(0);
 
@@ -291,6 +294,89 @@ test.describe('Orders', () => {
         await expect(page.getByRole('button', { name: /Select address/i })).toHaveCount(2);
     });
 
+    // #4951 — parity with the Angular admin-ui: a draft order should allow creating a
+    // new customer inline (not just selecting an existing one).
+    test('should create a new customer inline on a draft order', async ({ page }) => {
+        test.setTimeout(60_000);
+
+        const client = new VendureAdminClient(page);
+        await client.login();
+
+        // Create a draft order
+        const lp = listPage(page);
+        await lp.goto();
+        await lp.expectLoaded();
+        await lp.newButton.click();
+        await expect(page).toHaveURL(/\/orders\/draft\//, { timeout: 10_000 });
+
+        // Open the customer selector (a tabbed popover) and switch to "Create new customer"
+        await page.getByRole('button', { name: /Select customer/i }).click();
+        const customerPopover = page.locator('[data-slot="popover-content"]');
+        await expect(customerPopover).toBeVisible();
+        await customerPopover.getByRole('tab', { name: /Create new customer/i }).click();
+
+        const email = `inline.customer.${Date.now()}@test.com`;
+        await customerPopover.getByLabel('First name').fill('Inline');
+        await customerPopover.getByLabel('Last name').fill('Customer');
+        await customerPopover.getByLabel('Email address').fill(email);
+        await customerPopover.getByRole('button', { name: /Create customer/i }).click();
+
+        // The mutation runs and the customer becomes set on the order
+        await page.waitForResponse(resp => resp.url().includes('/admin-api') && resp.status() === 200);
+        await expect(page.getByRole('button', { name: /Inline Customer/i })).toBeVisible({
+            timeout: 10_000,
+        });
+    });
+
+    // #4951 — parity with the Angular admin-ui: a draft order should allow entering a
+    // new, ad-hoc address inline (not just selecting from the customer's saved addresses).
+    test('should enter a new shipping address inline on a draft order', async ({ page }) => {
+        test.setTimeout(60_000);
+
+        const client = new VendureAdminClient(page);
+        await client.login();
+
+        // Create a draft order with a customer already set
+        const lp = listPage(page);
+        await lp.goto();
+        await lp.expectLoaded();
+        await lp.newButton.click();
+        await expect(page).toHaveURL(/\/orders\/draft\//, { timeout: 10_000 });
+
+        await page.getByRole('button', { name: /Select customer/i }).click();
+        const customerPopover = page.locator('[data-slot="popover-content"]');
+        await customerPopover.getByPlaceholder('Search customers...').fill('hayden');
+        const haydenOption = page.getByRole('option').filter({ hasText: /hayden/i });
+        await expect(haydenOption.first()).toBeVisible({ timeout: 5_000 });
+        await haydenOption.first().click();
+        await page.waitForResponse(resp => resp.url().includes('/admin-api') && resp.status() === 200);
+
+        // Open the shipping address selector and switch to the "New address" tab
+        await page
+            .getByRole('button', { name: /Select address/i })
+            .first()
+            .click();
+        // Scope to the address popover (identified by its "New address" tab) to avoid
+        // matching the customer popover that may still be animating closed.
+        const popover = page
+            .locator('[data-slot="popover-content"]')
+            .filter({ has: page.getByRole('tab', { name: /New address/i }) });
+        await expect(popover).toBeVisible({ timeout: 5_000 });
+        await popover.getByRole('tab', { name: /New address/i }).click();
+
+        // Fill the inline address form
+        await popover.getByLabel('Street Address').fill('99 Inline Road');
+        await popover.getByLabel('City').fill('Inlineton');
+        // Country is a Select — open and pick the first available country
+        await popover.getByRole('combobox').click();
+        await page.getByRole('option').first().click();
+        await popover.getByRole('button', { name: /Okay/i }).click();
+
+        // The new address is applied to the order
+        await page.waitForResponse(resp => resp.url().includes('/admin-api') && resp.status() === 200);
+        await expect(page.getByText('99 Inline Road')).toBeVisible({ timeout: 10_000 });
+    });
+
     // #4393 — custom order history entry types should be displayed with key-value data
     test('should display custom order history entry types', async ({ page }) => {
         test.setTimeout(60_000);
@@ -345,7 +431,46 @@ test.describe('Orders', () => {
 
         // The address selector popover should auto-open
         await expect(page.locator('[data-slot="popover-content"]')).toBeVisible({ timeout: 5_000 });
-        await expect(page.getByText('Select an address')).toBeVisible();
+        await expect(page.getByRole('tab', { name: 'Existing address' })).toBeVisible();
+    });
+
+    // Regression test for the customFields blocker: editing an address on the modify page
+    // via the "New address" tab and clicking Preview should not produce a GraphQL variable
+    // coercion error (UpdateOrderAddressInput has no customFields field).
+    test('should update shipping address on modify page without GraphQL error', async ({ page }) => {
+        test.setTimeout(60_000);
+
+        const orderId = await createModifyingOrder(page);
+
+        await page.goto(`/orders/${orderId}/modify`);
+        await expect(page.getByRole('heading', { name: 'Modify order' })).toBeVisible({ timeout: 10_000 });
+
+        // Click "Edit" on shipping address
+        const editButtons = page.getByRole('button', { name: 'Edit' });
+        await editButtons.first().click();
+
+        // The address selector popover opens — switch to the "New address" tab
+        const popover = page.locator('[data-slot="popover-content"]');
+        await expect(popover).toBeVisible({ timeout: 5_000 });
+        await popover.getByRole('tab', { name: /New address/i }).click();
+
+        // Fill in a new address
+        await popover.getByLabel('Street Address').fill('456 Modified Ave');
+        await popover.getByLabel('City').fill('Modifiedton');
+        await popover.getByLabel('Postal Code').fill('99999');
+        // Country — open and pick the first available
+        await popover.getByRole('combobox').click();
+        await page.getByRole('option').first().click();
+        await popover.getByRole('button', { name: /Update address/i }).click();
+
+        // The address should appear in the modification summary
+        await expect(page.getByText('456 Modified Ave')).toBeVisible({ timeout: 10_000 });
+
+        // Click Preview — this is where the customFields blocker used to cause a GraphQL error
+        await page.getByRole('button', { name: /Preview/i }).click();
+
+        // The preview dialog should open without an error toast
+        await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
     });
 
     // #4393 — order modify page should show a "Recalculate shipping" checkbox
@@ -369,6 +494,8 @@ test.describe('Orders', () => {
         // Make a modification (change quantity) to enable the checkbox
         const quantityInput = page.getByTestId('order-line-quantity').first();
         await quantityInput.fill('2');
+        // The quantity is only committed on Enter or blur
+        await quantityInput.press('Enter');
 
         await expect(recalculateCheckbox).toBeEnabled();
         await expect(recalculateCheckbox).toBeChecked();
@@ -412,7 +539,7 @@ test.describe('Orders', () => {
             ).toBeVisible({ timeout: 10_000 });
         });
 
-        test('should transition order state', async ({ page }) => {
+        test('should transition fulfillment and update order state', async ({ page }) => {
             test.setTimeout(60_000);
 
             const client = new VendureAdminClient(page);
@@ -421,37 +548,24 @@ test.describe('Orders', () => {
 
             await page.goto(`/orders/${orderId}`);
 
-            // The state transition control is a badge with a dropdown trigger
-            // Find the ellipsis button near the state badge
-            const stateSection = page
-                .locator('[data-slot="card"]')
-                .filter({ hasText: /Fulfilled/i })
-                .first();
-            await expect(stateSection).toBeVisible({ timeout: 10_000 });
+            const fulfillmentStateControl = page.getByTestId('fulfillment-state-control');
+            await expect(fulfillmentStateControl).toContainText(/Pending/i, { timeout: 10_000 });
 
-            // Click the ellipsis dropdown button next to the state badge
-            const dropdownTrigger = stateSection.getByTestId('state-transition-trigger');
+            const dropdownTrigger = fulfillmentStateControl.getByTestId('state-transition-trigger');
             await dropdownTrigger.click();
 
-            // Select "Transition to Shipped" from the dropdown
             const menu = page.locator('[data-slot="dropdown-menu-content"]');
             await expect(menu).toBeVisible();
-            await menu
-                .getByText(/Shipped/i)
-                .first()
-                .click();
+            await menu.getByRole('menuitem', { name: /Transition to Shipped/i }).click();
 
-            // Wait for the mutation and page to update
-            await page.waitForResponse(resp => resp.url().includes('/admin-api') && resp.status() === 200);
+            await expect(page.getByText(/Fulfillment state updated successfully/i)).toBeVisible({
+                timeout: 10_000,
+            });
 
-            // Reload to get a clean page state, then verify the order is now "Shipped"
             await page.reload();
-            await expect(
-                page
-                    .locator('[data-slot="card"]')
-                    .filter({ hasText: /Shipped/i })
-                    .first(),
-            ).toBeVisible({ timeout: 10_000 });
+            await expect(page.getByTestId('order-state-control')).toContainText(/Shipped/i, {
+                timeout: 10_000,
+            });
         });
 
         test('should open refund dialog and show order lines', async ({ page }) => {
@@ -492,6 +606,51 @@ test.describe('Orders', () => {
             await expect(dialog.getByText('Reason', { exact: true })).toBeVisible();
 
             // Close without submitting
+            await dialog.getByRole('button', { name: 'Cancel' }).click();
+        });
+
+        // #4728 — refund dialog must reflect line quantities changed during order modification.
+        // Increasing a line from 1→2 while Modifying keeps orderPlacedQuantity=1; the dialog
+        // previously capped the refundable quantity at orderPlacedQuantity, so only 1 of the
+        // 2 paid units could be refunded. It must now offer the full modified quantity.
+        test('should reflect a line quantity increased during modification in the refund dialog', async ({
+            page,
+        }) => {
+            test.setTimeout(60_000);
+
+            const client = new VendureAdminClient(page);
+            await client.login();
+            const orderId = await createOrderWithIncreasedLineQuantity(client);
+
+            await page.goto(`/orders/${orderId}`);
+            await expect(page.getByRole('button', { name: /Fulfill order/i })).toBeVisible({
+                timeout: 10_000,
+            });
+
+            // Open the refund dialog via action bar dropdown
+            const actionBarEllipsis = page.getByTestId('action-bar-dropdown-trigger');
+            await expect(actionBarEllipsis).toBeVisible({ timeout: 10_000 });
+            await actionBarEllipsis.click();
+
+            const menu = page.locator('[data-slot="dropdown-menu-content"]');
+            await expect(menu).toBeVisible();
+            await menu
+                .getByText(/Refund/i)
+                .first()
+                .click();
+
+            const dialog = page.locator('[role="dialog"]');
+            await expect(dialog).toBeVisible({ timeout: 5_000 });
+
+            // The line's refund input must allow the full modified quantity (2).
+            // Pre-fix, `max` was orderPlacedQuantity (1) and entering 2 was clamped to 1.
+            const quantityInput = dialog.getByTestId('refund-quantity').first();
+            await expect(quantityInput).toBeVisible();
+            await expect(quantityInput).toHaveAttribute('max', '2');
+
+            await quantityInput.fill('2');
+            await expect(quantityInput).toHaveValue('2');
+
             await dialog.getByRole('button', { name: 'Cancel' }).click();
         });
 
@@ -721,6 +880,88 @@ async function createPaidOrder(client: VendureAdminClient): Promise<string> {
     `,
         { orderId },
     );
+
+    return orderId;
+}
+
+/**
+ * Creates a paid order, then (while in "Modifying") increases its single line's
+ * quantity from 1 to 2 and settles the additional payment. Returns the order ID in
+ * "PaymentSettled" state with orderPlacedQuantity=1 and current quantity=2.
+ */
+async function createOrderWithIncreasedLineQuantity(client: VendureAdminClient): Promise<string> {
+    const orderId = await createPaidOrder(client);
+
+    // Transition helper that fails loudly at the real boundary, so a broken flow
+    // surfaces here rather than as a confusing later assertion failure.
+    const transition = async (state: string) => {
+        const { transitionOrderToState } = await client.gql(
+            `
+            mutation ($id: ID!, $state: String!) {
+                transitionOrderToState(id: $id, state: $state) {
+                    ... on Order { id state }
+                    ... on OrderStateTransitionError { errorCode message transitionError }
+                }
+            }
+        `,
+            { id: orderId, state },
+        );
+        if (transitionOrderToState?.errorCode) {
+            throw new Error(
+                `transition to ${state} failed: ${String(transitionOrderToState.errorCode)} ${String(transitionOrderToState.message)}`,
+            );
+        }
+    };
+
+    await transition('Modifying');
+
+    const { order } = await client.gql(`query ($id: ID!) { order(id: $id) { lines { id } } }`, {
+        id: orderId,
+    });
+
+    const { modifyOrder } = await client.gql(
+        `
+        mutation ($input: ModifyOrderInput!) {
+            modifyOrder(input: $input) {
+                ... on Order { id }
+                ... on ErrorResult { errorCode message }
+            }
+        }
+    `,
+        {
+            input: {
+                dryRun: false,
+                orderId,
+                adjustOrderLines: [{ orderLineId: order.lines[0].id, quantity: 2 }],
+            },
+        },
+    );
+    if (modifyOrder.errorCode) {
+        throw new Error(
+            `modifyOrder failed: ${String(modifyOrder.errorCode)} ${String(modifyOrder.message)}`,
+        );
+    }
+
+    await transition('ArrangingAdditionalPayment');
+
+    const { addManualPaymentToOrder } = await client.gql(
+        `
+        mutation ($orderId: ID!) {
+            addManualPaymentToOrder(input: {
+                orderId: $orderId, method: "test-payment",
+                transactionId: "e2e-additional-tx-${orderId}", metadata: {}
+            }) { ... on Order { id state } ... on ErrorResult { errorCode message } }
+        }
+    `,
+        { orderId },
+    );
+    if (addManualPaymentToOrder.errorCode) {
+        throw new Error(
+            `addManualPaymentToOrder failed: ${String(addManualPaymentToOrder.errorCode)} ${String(addManualPaymentToOrder.message)}`,
+        );
+    }
+
+    await transition('PaymentSettled');
 
     return orderId;
 }

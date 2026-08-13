@@ -2,12 +2,12 @@
 title: "OrderService"
 generated: true
 ---
-<GenerationInfo sourceFile="packages/core/src/service/services/order.service.ts" sourceLine="142" packageName="@vendure/core" />
+<GenerationInfo sourceFile="packages/core/src/service/services/order.service.ts" sourceLine="146" packageName="@vendure/core" />
 
 Contains methods relating to [Order](/reference/typescript-api/entities/order#order) entities.
 
 ```ts title="Signature"
-class OrderService {
+class OrderService implements OnApplicationBootstrap {
     constructor(connection: TransactionalConnection, configService: ConfigService, productVariantService: ProductVariantService, customerService: CustomerService, countryService: CountryService, orderCalculator: OrderCalculator, shippingCalculator: ShippingCalculator, orderStateMachine: OrderStateMachine, orderMerger: OrderMerger, paymentService: PaymentService, paymentMethodService: PaymentMethodService, fulfillmentService: FulfillmentService, listQueryBuilder: ListQueryBuilder, refundStateMachine: RefundStateMachine, historyService: HistoryService, promotionService: PromotionService, eventBus: EventBus, channelService: ChannelService, orderModifier: OrderModifier, customFieldRelationService: CustomFieldRelationService, requestCache: RequestContextCacheService, translator: TranslatorService, stockLevelService: StockLevelService)
     getOrderProcessStates() => OrderProcessState[];
     findAll(ctx: RequestContext, options?: OrderListOptions, relations?: RelationPaths<Order>) => Promise<PaginatedList<Order>>;
@@ -72,9 +72,13 @@ class OrderService {
     deleteOrderNote(ctx: RequestContext, id: ID) => Promise<DeletionResponse>;
     deleteOrder(ctx: RequestContext, orderOrId: ID | Order) => ;
     mergeOrders(ctx: RequestContext, user: User, guestOrder?: Order, existingOrder?: Order) => Promise<Order | undefined>;
-    applyPriceAdjustments(ctx: RequestContext, order: Order, updatedOrderLines?: OrderLine[], relations?: RelationPaths<Order>) => Promise<Order>;
+    applyPriceAdjustments(ctx: RequestContext, order: Order, updatedOrderLines?: OrderLine[], relations?: RelationPaths<Order>, options?: ApplyPriceAdjustmentsOptions) => Promise<Order>;
+    applyPriceAdjustmentsIfStale(ctx: RequestContext, order: Order) => Promise<Order>;
 }
 ```
+* Implements: OnApplicationBootstrap
+
+
 
 <div className="members-wrapper">
 
@@ -428,10 +432,20 @@ we need to reconcile the contents of the two orders.
 The logic used to do the merging is specified in the [OrderOptions](/reference/typescript-api/orders/order-options#orderoptions) `mergeStrategy` config setting.
 ### applyPriceAdjustments
 
-<MemberInfo kind="method" type={`(ctx: <a href='/reference/typescript-api/request/request-context#requestcontext'>RequestContext</a>, order: <a href='/reference/typescript-api/entities/order#order'>Order</a>, updatedOrderLines?: <a href='/reference/typescript-api/entities/order-line#orderline'>OrderLine</a>[], relations?: RelationPaths<<a href='/reference/typescript-api/entities/order#order'>Order</a>>) => Promise<<a href='/reference/typescript-api/entities/order#order'>Order</a>>`}   />
+<MemberInfo kind="method" type={`(ctx: <a href='/reference/typescript-api/request/request-context#requestcontext'>RequestContext</a>, order: <a href='/reference/typescript-api/entities/order#order'>Order</a>, updatedOrderLines?: <a href='/reference/typescript-api/entities/order-line#orderline'>OrderLine</a>[], relations?: RelationPaths<<a href='/reference/typescript-api/entities/order#order'>Order</a>>, options?: <a href='/reference/typescript-api/orders/order-recalculation-strategy#applypriceadjustmentsoptions'>ApplyPriceAdjustmentsOptions</a>) => Promise<<a href='/reference/typescript-api/entities/order#order'>Order</a>>`}   />
 
 Applies promotions, taxes and shipping to the Order. If the `updatedOrderLines` argument is passed in,
 then all of those OrderLines will have their prices re-calculated using the configured [OrderItemPriceCalculationStrategy](/reference/typescript-api/orders/order-item-price-calculation-strategy#orderitempricecalculationstrategy).
+### applyPriceAdjustmentsIfStale
+
+<MemberInfo kind="method" type={`(ctx: <a href='/reference/typescript-api/request/request-context#requestcontext'>RequestContext</a>, order: <a href='/reference/typescript-api/entities/order#order'>Order</a>) => Promise<<a href='/reference/typescript-api/entities/order#order'>Order</a>>`}  since="3.8.0"  />
+
+Recalculates the given active Order's prices, promotions, taxes and shipping promotions if the
+configured [OrderRecalculationStrategy](/reference/typescript-api/orders/order-recalculation-strategy#orderrecalculationstrategy) reports it as stale. The shipping *method* and
+*rate* are deliberately NOT re-evaluated on this read path — the customer's chosen method is
+never silently swapped; those are re-evaluated when the Order transitions to `ArrangingPayment`.
+Only Orders in the `AddingItems` state are eligible; no-ops (returning the Order unchanged)
+otherwise. Invoked on the active-order read path.
 
 
 </div>

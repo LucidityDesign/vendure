@@ -2,11 +2,13 @@ import { DashboardCustomProviderDefinition } from '@/vdb/framework/extension-api
 import {
     BulkAction,
     DashboardActionBarItem,
+    DashboardDataTableViewOptionDefaults,
     DashboardHistoryEntryComponent,
     DashboardLoginExtensions,
     DashboardPageBlockDefinition,
     DashboardToolbarItemDefinition,
     DashboardWidgetDefinition,
+    DashboardWidgetFilterDefinition,
 } from '@/vdb/framework/extension-api/types/index.js';
 import { DashboardFormComponent } from '@/vdb/framework/form-engine/form-engine-types.js';
 import { DocumentNode } from 'graphql';
@@ -23,12 +25,15 @@ export interface GlobalRegistryContents {
     dashboardActionBarItemRegistry: Map<string, DashboardActionBarItem[]>;
     dashboardPageBlockRegistry: Map<string, DashboardPageBlockDefinition[]>;
     dashboardWidgetRegistry: Map<string, DashboardWidgetDefinition>;
+    excludedDashboardWidgets: Set<string>;
+    dashboardWidgetFilterRegistry: Map<string, DashboardWidgetFilterDefinition>;
     dashboardAlertRegistry: Map<string, DashboardAlertDefinition>;
     inputComponents: Map<string, DashboardFormComponent>;
     displayComponents: Map<string, DataDisplayComponent | DataTableDisplayComponent>;
     bulkActionsRegistry: Map<string, BulkAction[]>;
     listQueryDocumentRegistry: Map<string, DocumentNode[]>;
     detailQueryDocumentRegistry: Map<string, DocumentNode[]>;
+    viewOptionDefaultsRegistry: Map<string, DashboardDataTableViewOptionDefaults>;
     loginExtensions: DashboardLoginExtensions;
     historyEntries: Map<string, DashboardHistoryEntryComponent['component']>;
     navMenuModifiers: Array<(config: NavMenuConfig) => NavMenuConfig>;
