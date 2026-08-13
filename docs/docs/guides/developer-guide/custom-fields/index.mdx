@@ -1134,16 +1134,17 @@ const config = {
 #### onDelete
 <CustomFieldProperty required={false} type="'RESTRICT' | 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'SET DEFAULT'" />
 
-The [onDelete](https://typeorm.io/docs/relations/relations/) behavior for the relation. Defaults to `NO ACTION`.
+The [onDelete](https://typeorm.io/docs/relations/relations/) behavior for the relation. If not set, the database default (`NO ACTION`) applies.
 
-:::note
+:::caution
 
-Setting `onDelete` to `CASCADE` or `cascade: ['remove']` means that if the referenced entity is deleted, rows owning this relation may also be deleted.
-This can have unintended consequences, especially when referencing core Vendure entities.
-For example, if you have a relation to `ProductVariant` and set `onDelete: 'CASCADE'`, deleting that `ProductVariant` can cascade to rows that reference it.
-Use with caution.
+Setting `onDelete: 'CASCADE'` means that when the referenced entity is deleted, the database also deletes every row that references it through this custom field. For example, with a relation to `ProductVariant` and `onDelete: 'CASCADE'`, deleting a `ProductVariant` also deletes every row that references it. These deletions happen at the database level, so no Vendure events are published for the deleted rows.
 
-Setting `onDelete` on a `ManyToMany` (`list: true`) relation will affect the join table, but not the related entity.
+Setting `cascade: ['remove']` acts in the opposite direction: removing the owning entity with TypeORM's `remove()` also removes the related entity. The `cascade` setting has no effect when the referenced entity is deleted.
+
+:::
+
+Setting `onDelete` on a `ManyToMany` (`list: true`) relation applies to the foreign keys of the join table: deleting the related entity removes the join-table rows, and the rows of both entities are left untouched.
 
 ```ts title="src/vendure-config.ts"
 import { Product } from '\@vendure/core';
@@ -1170,7 +1171,7 @@ const config = {
 
 The [onUpdate](https://typeorm.io/docs/relations/relations/) behavior for the relation. If not set, the database default (`NO ACTION`) applies.
 
-Setting `onUpdate` on a `ManyToMany` (`list: true`) relation will affect the join table, but not the related entity.
+Setting `onUpdate` on a `ManyToMany` (`list: true`) relation applies to the foreign keys of the join table, not to the related entity.
 
 ```ts title="src/vendure-config.ts"
 import { Product } from '\@vendure/core';
