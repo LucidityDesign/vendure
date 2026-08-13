@@ -142,9 +142,9 @@ describe('registerCustomEntityFields() relation options', () => {
 
         expect(mockLoggerWarn).toHaveBeenCalledWith(
             [
-                `WARNING: You have set "onDelete: 'CASCADE'" on a custom field relation to the "Asset" entity.`,
-                `With this FK behavior, deleting a "Asset" row can delete owning rows that reference it.`,
-                `Please verify this is intended, especially when targeting core Vendure entities.`,
+                `WARNING: You have set "onDelete: 'CASCADE'" on the custom field relation "Product.${LIST_RELATION_FIELD}" to the "Asset" entity.`,
+                `Deleting "Asset" rows will also delete the "Product" rows that reference them.`,
+                `"Asset" is a core Vendure entity, so make sure this is what you intend.`,
             ].join('\n'),
         );
     });
@@ -168,9 +168,9 @@ describe('registerCustomEntityFields() relation options', () => {
 
         expect(mockLoggerWarn).toHaveBeenCalledWith(
             [
-                `WARNING: You have set "cascade: ['remove' | 'soft-remove']" on a custom field relation to the "Asset" entity.`,
-                `With this behavior, deleting a "Asset" row can delete owning rows that reference it.`,
-                `Please verify this is intended, especially when targeting core Vendure entities.`,
+                `WARNING: You have set "cascade: ["remove"]" on the custom field relation "Product.${LIST_RELATION_FIELD}" to the "Asset" entity.`,
+                `Removing "Product" rows with TypeORM's remove() or softRemove() will also remove the "Asset" rows they reference.`,
+                `"Asset" is a core Vendure entity, so make sure this is what you intend.`,
             ].join('\n'),
         );
     });
@@ -194,9 +194,9 @@ describe('registerCustomEntityFields() relation options', () => {
 
         expect(mockLoggerWarn).toHaveBeenCalledWith(
             [
-                `WARNING: You have set "cascade: ['remove' | 'soft-remove']" on a custom field relation to the "Asset" entity.`,
-                `With this behavior, deleting a "Asset" row can delete owning rows that reference it.`,
-                `Please verify this is intended, especially when targeting core Vendure entities.`,
+                `WARNING: You have set "cascade: ["soft-remove"]" on the custom field relation "Product.${LIST_RELATION_FIELD}" to the "Asset" entity.`,
+                `Removing "Product" rows with TypeORM's remove() or softRemove() will also remove the "Asset" rows they reference.`,
+                `"Asset" is a core Vendure entity, so make sure this is what you intend.`,
             ].join('\n'),
         );
     });
@@ -220,9 +220,9 @@ describe('registerCustomEntityFields() relation options', () => {
 
         expect(mockLoggerWarn).toHaveBeenCalledWith(
             [
-                `WARNING: You have set "cascade: true (which includes 'remove' and 'soft-remove')" on a custom field relation to the "Asset" entity.`,
-                `With this behavior, deleting a "Asset" row can delete owning rows that reference it.`,
-                `Please verify this is intended, especially when targeting core Vendure entities.`,
+                `WARNING: You have set "cascade: true (which includes 'remove' and 'soft-remove')" on the custom field relation "Product.${LIST_RELATION_FIELD}" to the "Asset" entity.`,
+                `Removing "Product" rows with TypeORM's remove() or softRemove() will also remove the "Asset" rows they reference.`,
+                `"Asset" is a core Vendure entity, so make sure this is what you intend.`,
             ].join('\n'),
         );
     });
@@ -246,9 +246,9 @@ describe('registerCustomEntityFields() relation options', () => {
 
         expect(mockLoggerWarn).toHaveBeenCalledWith(
             [
-                `WARNING: You have set "cascade: ['remove' | 'soft-remove']" on a custom field relation to the "Asset" entity.`,
-                `With this behavior, deleting a "Asset" row can delete owning rows that reference it.`,
-                `Please verify this is intended, especially when targeting core Vendure entities.`,
+                `WARNING: You have set "cascade: ["insert","remove"]" on the custom field relation "Product.${SINGLE_RELATION_FIELD}" to the "Asset" entity.`,
+                `Removing "Product" rows with TypeORM's remove() or softRemove() will also remove the "Asset" rows they reference.`,
+                `"Asset" is a core Vendure entity, so make sure this is what you intend.`,
             ].join('\n'),
         );
     });

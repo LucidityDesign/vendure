@@ -51,9 +51,9 @@ function registerCustomFieldsForEntity(
                     if (onDelete === 'CASCADE' && relatedEntityName in coreEntitiesMap && list !== true) {
                         Logger.warn(
                             [
-                                `WARNING: You have set "onDelete: 'CASCADE'" on a custom field relation to the "${relatedEntityName}" entity.`,
-                                `With this FK behavior, deleting a "${relatedEntityName}" row can delete owning rows that reference it.`,
-                                `Please verify this is intended, especially when targeting core Vendure entities.`,
+                                `WARNING: You have set "onDelete: 'CASCADE'" on the custom field relation "${String(entityName)}.${name}" to the "${relatedEntityName}" entity.`,
+                                `Deleting "${relatedEntityName}" rows will also delete the "${String(entityName)}" rows that reference them.`,
+                                `"${relatedEntityName}" is a core Vendure entity, so make sure this is what you intend.`,
                             ].join('\n'),
                         );
                     }
@@ -67,12 +67,12 @@ function registerCustomFieldsForEntity(
                         const cascadeSetting =
                             cascade === true
                                 ? `cascade: true (which includes 'remove' and 'soft-remove')`
-                                : `cascade: ['remove' | 'soft-remove']`;
+                                : `cascade: ${JSON.stringify(cascade)}`;
                         Logger.warn(
                             [
-                                `WARNING: You have set "${cascadeSetting}" on a custom field relation to the "${relatedEntityName}" entity.`,
-                                `With this behavior, deleting a "${relatedEntityName}" row can delete owning rows that reference it.`,
-                                `Please verify this is intended, especially when targeting core Vendure entities.`,
+                                `WARNING: You have set "${cascadeSetting}" on the custom field relation "${String(entityName)}.${name}" to the "${relatedEntityName}" entity.`,
+                                `Removing "${String(entityName)}" rows with TypeORM's remove() or softRemove() will also remove the "${relatedEntityName}" rows they reference.`,
+                                `"${relatedEntityName}" is a core Vendure entity, so make sure this is what you intend.`,
                             ].join('\n'),
                         );
                     }
